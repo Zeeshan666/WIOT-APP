@@ -7,16 +7,99 @@ import {
   Image,
   ImageBackground,
   ScrollView,
+  Alert,
 } from 'react-native';
 import {Row, Grid} from 'react-native-easy-grid';
 import {Button, Icon, Input} from 'react-native-elements';
 import * as Animatable from 'react-native-animatable';
-
+import axios from 'axios';
+import {BallIndicator} from 'react-native-indicators';
+import AsyncStorage from '@react-native-community/async-storage';
 export class Login extends Component {
   static navigationOptions = {
     header: null,
   };
+
+  state = {
+    name: '',
+    password: '',
+    loading: false,
+  };
+  componentDidMount() {
+    AsyncStorage.getItem('Login').then(userdata => {
+      let userinfo = JSON.parse(userdata);
+      if (userinfo) {
+        this.setState({
+          name: userinfo.name,
+          password: userinfo.password,
+        });
+        console.log(userinfo.password);
+      }
+    });
+  }
+
+  submitHandler = e => {
+    const {name, password} = this.state;
+    const login = {
+      name: name,
+      password: password,
+    };
+    try {
+      AsyncStorage.setItem('Login', JSON.stringify(login));
+    } catch (e) {
+      console.log(e);
+    }
+    if (name.trim('') !== '') {
+      this.setState({loading: true});
+      axios
+        .post(
+          'http://raaye.com.pk/api/login',
+          {
+            email: name,
+            password: password,
+          },
+          {
+            headers: {
+              token:
+                '$2y$10$lh2WOGol2drQdzltSN2Y3ev9m.LdTOjfd8tUzt8zDdwOPheRwiE2O',
+            },
+          },
+        )
+        .then(res => {
+          this.setState({loading: false});
+          if (res.data.msg === 'success') {
+            this.props.navigation.navigate('PlantDetail');
+            ///Alert.alert('welcome to wiot');
+          } else {
+            Alert.alert('Invalid Email Or Password');
+          }
+        })
+        .catch(err => console.log(err));
+    } else {
+      Alert.alert(
+        'Sorry',
+
+        'Plx fill form correctly',
+        [
+          {
+            text: 'OK',
+            onPress: () => console.log('Ask me later pressed'),
+          },
+        ],
+        {cancelable: false},
+      );
+    }
+  };
   render() {
+    const {navigate} = this.props.navigation;
+    if (this.state.loading)
+      return (
+        <BallIndicator
+          size={65}
+          color="#11D58E"
+          style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}
+        />
+      );
     return (
       <ScrollView>
         <ImageBackground
@@ -36,15 +119,19 @@ export class Login extends Component {
             <Row size={2}>
               <View style={styles.SRowView}>
                 <Input
-                  placeholder="user name"
+                  placeholder="userName"
                   inputContainerStyle={styles.inputContainerStyle}
                   labelStyle={styles.labelStyle}
+                  value={this.state.name}
+                  onChangeText={val => this.setState({name: val})}
                 />
                 <Input
                   placeholder="Password"
                   secureTextEntry={true}
                   inputContainerStyle={styles.inputContainerStyle}
                   labelStyle={styles.labelStyle}
+                  value={this.state.password}
+                  onChangeText={val => this.setState({password: val})}
                 />
               </View>
             </Row>
@@ -61,7 +148,8 @@ export class Login extends Component {
                     buttonStyle={styles.buttonStyle}
                     titleStyle={styles.btnTxt}
                     type="outline"
-                    onPress={() => alert('press me')}
+                    //onPress={() => navigate('PlantDetail')}
+                    onPress={this.submitHandler}
                   />
                   <View style={styles.btmTxtView}>
                     <Text style={styles.btmTxtF}>Or connect with</Text>
